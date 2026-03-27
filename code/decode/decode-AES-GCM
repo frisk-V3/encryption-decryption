@@ -1,0 +1,36 @@
+export async function decrypt(encryptedObj, keyString) {
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    enc.encode(keyString),
+    { name: "PBKDF2" },
+    false,
+    ["deriveKey"]
+  );
+
+  const key = await crypto.subtle.deriveKey(
+    {
+      name: "PBKDF2",
+      salt: enc.encode("fixed-salt"),
+      iterations: 100000,
+      hash: "SHA-256"
+    },
+    keyMaterial,
+    { name: "AES-GCM", length: 256 },
+    false,
+    ["decrypt"]
+  );
+
+  const iv = Uint8Array.from(atob(encryptedObj.iv), c => c.charCodeAt(0));
+  const data = Uint8Array.from(atob(encryptedObj.data), c => c.charCodeAt(0));
+
+  const decrypted = await crypto.subtle.decrypt(
+    { name: "AES-GCM", iv },
+    key,
+    data
+  );
+
+  return dec.decode(decrypted);
+}
